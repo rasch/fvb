@@ -6,9 +6,11 @@ specifiers:
   tsup: ^6.6.3
   typescript: ^4.9.5
 
+dependencies:
+  eek-whales: 0.1.0
+
 devDependencies:
   '@types/node': 18.14.0
-  eek-whales: 0.1.0
   tsup: 6.6.3_typescript@4.9.5
   typescript: 4.9.5
 
@@ -346,7 +348,7 @@ packages:
 
   /eek-whales/0.1.0:
     resolution: {integrity: sha512-vvCGE6w4fJmrD57lnm5v0F0mScbauoMVIU1SKAEw7Sb6LJMyvAfT+8KfCv5e+o3LkR9CU4ih2FtxVCLxg7lzKQ==}
-    dev: true
+    dev: false
 
   /esbuild/0.17.9:
     resolution: {integrity: sha512-m3b2MR76QkwKPw/KQBlBJVaIncfQhhXsDMCFPoyqEOIziV+O7BAKqOYT1NbHsnFUX0/98CLWxUfM5stzh4yq4Q==}
