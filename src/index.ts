@@ -1,49 +1,23 @@
-import { equals } from "eek-whales"
-
-// ---------------------------------------------------------------------
-// Utilities
-// ---------------------------------------------------------------------
-
-interface ExitCode { (n: number): number }
-const exitCode: ExitCode = n => n >= 0 && n < 255 ? ~~n : 255
-
-interface Fmt { (value: any): string }
-const fmt: Fmt = value => Object.is(value, -0) ? "-0" : `${value}`
-
-interface Msg {
-  (message?: string, actual?: any, expected?: any, equal?: boolean): string
-}
-const msg: Msg = (message, actual, expected, equal) => {
-  if (typeof message !== "undefined") {
-    return message
-  } else if (typeof actual !== "undefined" && typeof expected !== "undefined") {
-    return `${fmt(actual)} ${equal ? "===" : "!=="} ${fmt(expected)}`
-  } else {
-    return ""
-  }
-}
+import { equals, inspect } from "eek-whales"
 
 // ---------------------------------------------------------------------
 // TAP Grammar
 // ---------------------------------------------------------------------
 
-interface TapDocument { (version: string, plan: string, body: string): string }
-const tapDocument: TapDocument = (version, plan, body) => 
-  `${version}${plan}${body}`
-
-interface Version { (n: number): string }
-const version: Version = (n = 14) => `TAP version ${n}\n`
+interface TapDocument { (plan: string, body: string): string }
+const tapDocument: TapDocument = (plan, body) =>
+  `TAP version 14\n${plan}${body}`
 
 interface Plan { (n: number, reason?: string): string }
-const plan: Plan = (n, reason) => 
+const plan: Plan = (n, reason) =>
   `1..${n}${reason ? ` # ${reason.replace(/\n+/g, " ")}` : ""}\n`
 
-interface TestPoint { (pass: boolean, n: number, description: string): string }
+interface TestPoint { (pass: boolean, n: number, description?: string): string }
 const testPoint: TestPoint = (pass, n, description) =>
-  `${pass ? "" : "not "}ok ${n} - ${description}\n`
+  `${pass ? "" : "not "}ok ${n}${description ? ` - ${description}` : ""}\n`
 
 interface BailOut { (reason?: string): string }
-const bailOut: BailOut = reason => 
+const bailOut: BailOut = reason =>
   `Bail out!${reason ? ` ${reason}` : ""}\n`
 
 interface Comment { (s: string): string }
@@ -52,8 +26,8 @@ const comment: Comment = s => `# ${s}\n`
 interface YamlBlock { (actual: any, expected: any, e: Error): string }
 const yamlBlock: YamlBlock = (actual, expected, e) => `  ---
   message:  ${e.message}
-  actual:   ${actual ? fmt(actual) : "N/A"}
-  expected: ${expected ? fmt(expected) : "N/A"}
+  actual:   ${inspect(actual)}
+  expected: ${inspect(expected)}
   stack: |-
     ${e.stack?.trim()}
   ...\n`
@@ -67,17 +41,17 @@ interface T {
   total: number
   current: number
   failed: number
-  pass: (message?: string, actual?: any, expected?: any, equal?: boolean) => void
-  fail: (message?: string, actual?: any, expected?: any, equal?: boolean) => void
-  equal: (actual: any, expected: any, message?: string) => void
-  notEqual: (actual: any, expected: any, message?: string) => void
+  pass: (msg?: string) => void
+  fail: (msg?: string, actual?: any, expected?: any) => void
+  equal: (actual: any, expected: any, msg?: string) => void
+  notEqual: (actual: any, expected: any, msg?: string) => void
   plan: (n: number) => void
-  ok: (actual: any, message?: string) => void
-  notOk: (actual: any, message?: string) => void
-  bail: (message?: string) => void
-  throws: (fn: () => void, message?: string) => void
-  doesNotThrow: (fn: () => void, message?: string) => void
-  comment: (message: string) => void
+  ok: (actual: any, msg?: string) => void
+  notOk: (actual: any, msg?: string) => void
+  bail: (msg?: string) => void
+  throws: (fn: () => void, msg?: string) => void
+  doesNotThrow: (fn: () => void, msg?: string) => void
+  comment: (msg: string) => void
 }
 
 const t: T = {
@@ -86,18 +60,16 @@ const t: T = {
   total: 0,
   current: 0,
   failed: 0,
-  
-  pass: (message, actual, expected, equal) => {
-    t.total++
+
+  pass: msg => {
     t.current++
-    t.body += testPoint(true, t.total, msg(message, actual, expected, equal))
+    t.body += testPoint(true, ++t.total, msg)
   },
 
-  fail: (message, actual, expected, equal) => {
-    t.total++
+  fail: (msg, actual, expected) => {
     t.current++
     t.failed++
-    t.body += testPoint(false, t.total, msg(message, actual, expected, equal))
+    t.body += testPoint(false, ++t.total, msg)
     try {
       throw new Error("Failed Test")
     } catch (e) {
@@ -108,21 +80,23 @@ const t: T = {
       )
     }
   },
-  
-  equal: (actual, expected, message) =>
-    (equals(actual)(expected) ? t.pass : t.fail)(message, actual, expected, true),
-  
-  notEqual: (actual, expected, message) =>
-    (equals(actual)(expected) ? t.fail : t.pass)(message, actual, expected, false),
 
-  plan: n => t.equal(t.current, n, `plan(${n}) === ${t.current}`),
+  equal: (actual, expected, msg) => equals(actual)(expected)
+    ? t.pass(msg)
+    : t.fail(msg, actual, expected),
 
-  ok: (actual, message) => t.equal(actual, true, message),
+  notEqual: (actual, expected, msg) => equals(actual)(expected)
+    ? t.fail(msg, actual, expected)
+    : t.pass(msg),
 
-  notOk: (actual, message) => t.equal(actual, false, message),
-  
-  bail: message => {
-    t.body += bailOut(message)
+  plan: n => t.equal(t.current, n),
+
+  ok: (actual, msg) => t.equal(actual, true, msg),
+
+  notOk: (actual, msg) => t.equal(actual, false, msg),
+
+  bail: msg => {
+    t.body += bailOut(msg)
     if (typeof process === "object" && typeof process.exit === "function") {
       t.failed++
       process.exit()
@@ -130,26 +104,26 @@ const t: T = {
       throw new Error("BAIL")
     }
   },
-  
-  throws: (fn, message) => {
+
+  throws: (fn, msg) => {
     try {
       fn()
-      t.fail(`${message}: ${fn}`)
+      t.fail(`${msg}: ${fn}`)
     } catch (e) {
-      t.pass(`${message}: ${fn}`)
+      t.pass(`${msg}: ${fn}`)
     }
   },
-  
-  doesNotThrow: (fn, message) => {
+
+  doesNotThrow: (fn, msg) => {
     try {
       fn()
-      t.pass(`${message}: ${fn}`)
+      t.pass(`${msg}: ${fn}`)
     } catch (e) {
-      t.fail(`${message}: ${fn}`)
+      t.fail(`${msg}: ${fn}`)
     }
   },
-  
-  comment: message => { t.body += comment(message) },
+
+  comment: msg => { t.body += comment(msg) },
 }
 
 // ---------------------------------------------------------------------
@@ -161,16 +135,12 @@ export const test: Test = async (description, fn) => {
   t.current = 0
   t.body += comment(description)
 
-  try {
-    fn(t)
-  } catch (e) {
-    t.fail(
-      e instanceof Error ? e.message : "",
-      "Throws Due to Test Error",
-      "Should Not Throw"
-    )
-  }
-  
+  await Promise
+  .resolve(fn(t))
+  .catch(e => {
+    t.fail(e.message, "Throws Due to Test Error", "Should Not Throw")
+  })
+
   return t
 }
 
@@ -178,9 +148,12 @@ export const test: Test = async (description, fn) => {
 // Print Report
 // ---------------------------------------------------------------------
 
+interface ExitCode { (n: number): number }
+const exitCode: ExitCode = n => n >= 0 && n < 255 ? ~~n : 255
+
 if (typeof process === "object" && typeof process.exit === "function") {
   process.on("exit", () => {
-    console.log(tapDocument(version(14), plan(t.total), t.body.trim()))
+    console.log(tapDocument(plan(t.total), t.body.trim()))
     process.exit(exitCode(t.failed))
   })
 }
