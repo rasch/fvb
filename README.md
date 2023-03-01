@@ -9,10 +9,10 @@
 Testing a **syncronous** function
 
 ```js
-// test/test-add.js
+// add.spec.js
 
 import { test } from "fvb"
-import { add } from "../src/add.js"
+import { add } from "./add.js"
 
 test("Test add function", t => {
   t.equal(add(1, 2, 3, 4, 5, 6, 7), 28, "given multiple arguments")
@@ -26,7 +26,7 @@ test("Test add function", t => {
 Running the test with `node`.js
 
 ```sh
-node ./test/test-add.js
+node add.spec.js
 ```
 
 ## asyncronous example
@@ -34,7 +34,7 @@ node ./test/test-add.js
 Testing **async** functions
 
 ```js
-// test/test-a.js
+// test-a.js
 
 import { test } from "fvb"
 
@@ -48,7 +48,7 @@ test("Testing another async function in a different file", async t => {
 Running the test
 
 ```sh
-node ./test/test-a.js
+node test-a.js
 ```
 
 When calling the `test` function multiple times in a single file and
@@ -56,7 +56,7 @@ testing async code, top-level await should be used for the tests to run
 in order and for `t.plan` to work properly.
 
 ```js
-// test/test-b.js
+// test-b.js
 
 import { test } from "fvb"
 
@@ -74,14 +74,14 @@ await test("Testing another async function", async t => {
 Running the test
 
 ```sh
-node ./test/test-b.js
+node test-b.js
 ```
 
 Use top-level `await` to ensure that the `t.plan` method works and the
 tests run in the expected order.
 
 ```js
-// test/index.js
+// index.spec.js
 
 await import("./test-a.js")
 await import("./test-b.js")
@@ -90,7 +90,7 @@ await import("./test-b.js")
 Running the tests
 
 ```sh
-node ./test/index.js
+node index.spec.js
 ```
 
 ## install
@@ -113,33 +113,126 @@ yarn
 yarn add --dev fvb
 ```
 
-## methods
+## API
 
 ### `test(description, fn)`
 
+```txt
+test :: String -> (T -> Undefined) -> Promise(T)
+```
+
+The `test` method is the only function provided by `fvb`. It accepts a
+string value for the test description as the first argument. The second
+argument is a function that accepts a `T` interface as described in the
+Assert section below. A Promise containing `T` is returned.
+
+## Assert (`T`)
+
 ### `t.equal(actual, expected, [msg])`
+
+```txt
+t#equal :: a -> b -> (String | Undefined) -> Undefined
+```
+
+A [deep] equality assertion that checks if `actual` is equal to
+`expected` using JavaScript's `Object.is` static method. `Setoid`
+objects with an `equals` or `fantasy-land/equals` method are compared
+using these methods.
 
 ### `t.notEqual(actual, expected, [msg])`
 
+```txt
+t#notEqual :: a -> b -> (String | Undefined) -> Undefined
+```
+
+This assertion is the same as the `t.equal` method except the values
+compared are expected to be NOT equal.
+
 ### `t.ok(value, [msg])`
+
+```txt
+t#ok :: a -> (String | Undefined) -> Undefined
+```
+
+Pass if the given `value` is `true`.
 
 ### `t.notOk(value, [msg])`
 
-### `t.throws(fn, expected, [msg])`
+```txt
+t#notOk :: a -> (String | Undefined) -> Undefined
+```
 
-### `t.doesNotThrow(fn, expected, [msg])`
+Pass if the given `value` is `false`.
+
+### `t.throws(fn, [msg])`
+
+```txt
+t#throws :: (() -> Undefined) -> (String | Undefined) -> Undefined
+```
+
+Pass if the given `function` throws when called.
+
+### `t.doesNotThrow(fn, [msg])`
+
+```txt
+t#doesNotThrow :: (() -> Undefined) -> (String | Undefined) -> Undefined
+```
+
+Pass if the given `function` does NOT throw when called.
 
 ### `t.plan(n)`
 
-### `t.fail([msg])`
+```txt
+t#plan :: Integer -> Undefined
+```
+
+The `t.plan` module is NOT required. It is just another check that can
+be used to help ensure all of the assertions ran. The integer given
+should be a count of the assertions in the current `test` (excluding
+the current t.plan call).
+
+When using this method for testing asynchronous functions, be sure to
+`await` any `async` calls before calling `t.plan`.
+
+### `t.fail([msg], [actual], [expected])`
+
+```txt
+t#fail :: (String | Undefined) -> a -> b -> Undefined
+```
+
+An assertion that automatically fails. Useful as a helper to build
+custom assertions.
 
 ### `t.pass([msg])`
 
-### `t.comment([msg])`
+```txt
+t#pass :: (String | Undefined) -> Undefined
+```
+
+An assertion that automatically passes. Useful as a helper to build
+custom assertions.
+
+### `t.comment(msg)`
+
+```txt
+t#comment :: String -> Undefined
+```
+
+Print the given message as a comment in the TAP output.
 
 ### `t.bail([msg])`
 
+```txt
+t#bail :: (String | Undefined) -> Undefined
+```
+
+Bail out of the test! If the environment has a `process.exit` method
+then it is called, otherwise an `Error` is thrown.
+
 ## .then(fn)
+
+`test` returns a Promise containing `T`. This can be useful for creating
+custom reporting and for using in the browser's `console`.
 
 ### using in the browser
 
