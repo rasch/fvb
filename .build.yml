@@ -1,0 +1,35 @@
+image: alpine/latest
+packages:
+  - nodejs
+  - npm
+sources:
+  - https://git.sr.ht/~rasch/fvb
+environment:
+  project: fvb
+secrets:
+  - 2b8f0d2a-cab9-451d-b684-6b89582fb7b0 # NPM publish token
+tasks:
+  - setup: |
+      sudo npm install --global pnpm
+      cd "$project"
+      pnpm install
+  - lint: |
+      cd "$project"
+      pnpm run lint
+  - test: |
+      cd "$project"
+      pnpm run --silent test
+  - test_async: |
+      cd "$project"
+      pnpm run --silent test-async
+  - stop_if_not_release: |
+      cd "$project"
+      git describe --exact-match HEAD || complete-build
+  - release: |
+      cd "$project"
+      pnpm run build
+      echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' >> .npmrc
+      set +x
+      . ~/.env
+      set -x
+      npm publish --access public
