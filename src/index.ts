@@ -1,4 +1,4 @@
-import { equals, inspect } from "eek-whales"
+import { equals, inspect, is, isFunction } from "eek-whales"
 
 // ---------------------------------------------------------------------
 // TAP Grammar
@@ -40,7 +40,7 @@ const yamlBlock: YamlBlock = (actual, expected, e) => `  ---
 // Mr. T
 // ---------------------------------------------------------------------
 
-interface T {
+export interface T {
   body: string
   total: number
   current: number
@@ -101,7 +101,11 @@ const t: T = {
 
   bail: msg => {
     t.body += bailOut(msg)
-    if (typeof process === "object" && typeof process.exit === "function") {
+    if (
+      is("process")(process) &&
+      isFunction(process.exit) &&
+      !process.env.FVB_TEST
+    ) {
       t.failed++
       process.exit()
     } else {
