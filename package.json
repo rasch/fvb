@@ -16,6 +16,7 @@
     "dev": "tsup src/index.ts --format esm --dts --sourcemap --no-splitting --clean --watch",
     "lint": "tsc",
     "test": "tsup src/index.spec.ts --format esm --no-splitting --clean --silent --onSuccess 'node dist/index.spec.js'",
+    "test-async": "tsup src/index-async.spec.ts --target es2022 --format esm --no-splitting --clean --silent --onSuccess 'node dist/index-async.spec.js'",
     "clean": "rm -rf dist node_modules"
   },
   "keywords": [
