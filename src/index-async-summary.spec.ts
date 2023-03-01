@@ -35,7 +35,7 @@ ok 20 - plan(1)
 # Summary
 # total  20
 # failed 0
-# t.body
+# Ensure that t.body contains expected output
 `
 
   t.equal(t.body, expected)
