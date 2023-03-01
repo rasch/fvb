@@ -31,6 +31,7 @@
   ],
   "author": "Randy Schneck <i@rasch.co>",
   "license": "ISC",
+  "repository": "github:rasch/fvb",
   "devDependencies": {
     "@types/node": "^18.14.2",
     "eek-whales": "^0.2.0",
