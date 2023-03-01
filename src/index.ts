@@ -10,24 +10,28 @@ const tapDocument: TapDocument = (plan, body) =>
 
 interface Plan { (n: number, reason?: string): string }
 const plan: Plan = (n, reason) =>
-  `1..${n}${reason ? ` # ${reason.replace(/\n+/g, " ")}` : ""}\n`
+  `1..${n}${reason ? ` # ${reason.replace(/(\s\s+|\n+)/g, " ")}` : ""}\n`
 
 interface TestPoint { (pass: boolean, n: number, description?: string): string }
 const testPoint: TestPoint = (pass, n, description) =>
-  `${pass ? "" : "not "}ok ${n}${description ? ` - ${description}` : ""}\n`
+  (pass ? `ok ${n}` : `not ok ${n}`) +
+  (description ? ` - ${description.replace(/(\s\s+|\n+)/g, " ")}\n` : "\n")
 
 interface BailOut { (reason?: string): string }
 const bailOut: BailOut = reason =>
-  `Bail out!${reason ? ` ${reason}` : ""}\n`
+  `Bail out!${reason ? ` ${reason.replace(/(\s\s+|\n+)/g, " ")}` : ""}\n`
 
 interface Comment { (s: string): string }
-const comment: Comment = s => `# ${s}\n`
+const comment: Comment = s =>
+  s.split("\n").map(l => `# ${l.trim()}`.trim()).join("\n") + "\n"
 
 interface YamlBlock { (actual: any, expected: any, e: Error): string }
 const yamlBlock: YamlBlock = (actual, expected, e) => `  ---
-  message:  ${e.message}
-  actual:   ${inspect(actual)}
-  expected: ${inspect(expected)}
+  message: ${e.message}
+  actual: |-
+    ${inspect(actual).split("\n").join("\n    ")}
+  expected: |-
+    ${inspect(expected).split("\n").join("\n    ")}
   stack: |-
     ${e.stack?.trim()}
   ...\n`
@@ -89,7 +93,7 @@ const t: T = {
     ? t.fail(msg, actual, expected)
     : t.pass(msg),
 
-  plan: n => t.equal(t.current, n),
+  plan: n => t.equal(t.current, n, `plan(${n})`),
 
   ok: (actual, msg) => t.equal(actual, true, msg),
 
@@ -108,18 +112,18 @@ const t: T = {
   throws: (fn, msg) => {
     try {
       fn()
-      t.fail(`${msg}: ${fn}`)
+      t.fail(msg, fn)
     } catch (e) {
-      t.pass(`${msg}: ${fn}`)
+      t.pass(msg)
     }
   },
 
   doesNotThrow: (fn, msg) => {
     try {
       fn()
-      t.pass(`${msg}: ${fn}`)
+      t.pass(msg)
     } catch (e) {
-      t.fail(`${msg}: ${fn}`)
+      t.fail(msg, fn)
     }
   },
 
